@@ -66,17 +66,17 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-// AI Studio 연동을 위한 전역 타입 선언
-// FIX: Defined AIStudio interface to resolve conflicting property declarations on the Window object.
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
+// Define the interface globally to avoid conflicts with host-provided types
+// and ensure that window.aistudio matches the expected shape and modifiers.
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
-    aistudio: AIStudio;
+    aistudio?: AIStudio;
   }
 }
 
-export {}; // 모듈 시스템에서 전역 선언을 인식시키기 위해 추가
+export {};

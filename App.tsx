@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { WorkflowStep, ProjectState, Scene, TopicSource } from './types';
 import { 
@@ -66,7 +65,7 @@ const App: React.FC = () => {
 | 구분 | 화자 | 일본어 대본 | 한국어 의미 | 연기 톤 가이드 |
 |:---:|:---:|:---|:---|:---|
 | 내레이션 | 시어머니 | (ため息) 皆さん、聞いてくださいよ... | (한숨) 여러분, 제 말 좀 들어보세요... | 억울하고 답답하게 |
-| 대사 | 며느리 | お義母さん、それ汚いから捨てますね。 | 어머님, 그거 더러우니까 버릴게요. | 차갑고 무시하듯이 |`;
+| 대사 | 며느리 | お義母さん, それ汚いから捨てますね。 | 어머님, 그거 더러우니까 버릴게요. | 차갑고 무시하듯이 |`;
 
   const artDirectorPrompt = `# Role: AI Art Director (Web-Novel Style)
 # Task: Step 2 대본의 주요 감정선을 표현할 '삽화(Illustration)' 프롬프트를 작성하라.
@@ -81,6 +80,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
+      // Accessing aistudio from window with optional check to handle potential unavailability
       if (window.aistudio) {
         setApiKeySelected(await window.aistudio.hasSelectedApiKey());
       }
@@ -178,7 +178,8 @@ const App: React.FC = () => {
           <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter">Access Required</h1>
           <p className="text-slate-400 text-sm leading-relaxed">이 시스템은 고성능 Pro 모델을 사용합니다. 유료 결제가 활성화된 API 키가 필요합니다.</p>
           <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block text-sky-500 text-xs font-bold hover:underline">Billing 가이드 확인 ↗</a>
-          <button onClick={() => window.aistudio.openSelectKey().then(() => setApiKeySelected(true))} className="btn-primary w-full py-4 uppercase tracking-widest font-black">API 키 설정하기</button>
+          {/* Using optional chaining to trigger the select key dialog safely */}
+          <button onClick={() => window.aistudio?.openSelectKey().then(() => setApiKeySelected(true))} className="btn-primary w-full py-4 uppercase tracking-widest font-black">API 키 설정하기</button>
         </div>
       </div>
     );
@@ -290,7 +291,7 @@ const App: React.FC = () => {
                           AI Studio(또는 API 호출 시) 우측 패널에서 아래와 같이 설정을 변경하여 제미나이를 '막장 드라마 전문 작가'로 변신시킬 수 있습니다.
                       </p>
                       <ul className="text-xs text-slate-300 list-disc list-inside mt-2 space-y-1">
-                          {/* FIX: Updated model name to 'gemini-3-pro-preview' which is not a deprecated model. */}
+                          {/* Recommended to use gemini-3-pro-preview for complex reasoning tasks. */}
                           <li><strong>Model:</strong> gemini-3-pro-preview</li>
                           <li><strong>Temperature (창의성):</strong> 1.7 이상으로 설정 (감정적, 자극적 표현 유도)</li>
                       </ul>
