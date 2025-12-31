@@ -66,8 +66,6 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-// Define the interface globally to avoid conflicts with host-provided types
-// and ensure that window.aistudio matches the expected shape and modifiers.
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
