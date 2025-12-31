@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Scene, VideoPrompt, MarketingData, VISUAL_CONSTANTS, ThumbnailResult, THUMBNAIL_COLOR_STRATEGY, TopicResult, TopicSource } from "../types";
 
@@ -37,8 +36,10 @@ const robustJsonParse = (text: string | undefined): any => {
   }
 };
 
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 export const extractProtagonistDescription = async (scenes: Scene[]): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const scriptContent = scenes
     .map(s => `Scene ${s.sceneNumber} (Narration: ${s.japaneseNarration}, Direction: ${s.koreanGuide})`)
     .join("\n");
@@ -51,7 +52,7 @@ export const extractProtagonistDescription = async (scenes: Scene[]): Promise<st
 };
 
 export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `[SYSTEM] Analyze this URL: ${url}. 
@@ -93,7 +94,7 @@ export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> =>
 };
 
 export const generateScript = async (topic: string): Promise<Scene[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: `[ROLE] Japanese Senior Expert Writer. [TOPIC] ${topic}. [TASK] 8-second scenes, Japanese/Korean bilingual script. Create a detailed script including narration and production guides.`,
@@ -121,7 +122,7 @@ export const generateScript = async (topic: string): Promise<Scene[]> => {
 };
 
 export const generateVideoPrompts = async (scenes: Scene[]): Promise<VideoPrompt[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const input = scenes.map(s => `Scene ${s.sceneNumber}: ${s.visualDirection}`).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -145,7 +146,7 @@ export const generateVideoPrompts = async (scenes: Scene[]): Promise<VideoPrompt
 };
 
 export const proofreadJapanese = async (scenes: Scene[]): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const text = scenes.map(s => s.japaneseNarration).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -155,7 +156,7 @@ export const proofreadJapanese = async (scenes: Scene[]): Promise<string> => {
 };
 
 export const generateMarketing = async (topic: string, script: string): Promise<MarketingData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Based on this topic "${topic}" and script summary, generate 3 viral Japanese titles, a main thumbnail copy, and relevant hashtags.`,
@@ -176,7 +177,7 @@ export const generateMarketing = async (topic: string, script: string): Promise<
 };
 
 export const generateThumbnails = async (topic: string, benchmarkUrl: string, marketing: MarketingData, protagonistDescription: string): Promise<ThumbnailResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
   const characterStyle = protagonistDescription || VISUAL_CONSTANTS;
   const basePrompt = `Professional YouTube thumbnail. Japanese text: "${marketing.thumbnailCopy}". Style: ${characterStyle}. Color Strategy: ${THUMBNAIL_COLOR_STRATEGY}. High contrast, 4K resolution.`;
 
