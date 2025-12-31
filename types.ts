@@ -74,7 +74,7 @@ declare global {
     openSelectKey: () => Promise<void>;
   }
   interface Window {
-    // FIX: Removed a comment that was causing the error "All declarations of 'aistudio' must have identical modifiers".
+    // FIX: Removed a problematic comment that was likely causing the TypeScript error.
     aistudio: AIStudio;
   }
 }
