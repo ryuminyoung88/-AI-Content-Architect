@@ -2,25 +2,77 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Scene, VideoPrompt, MarketingData, VISUAL_CONSTANTS, ThumbnailResult, THUMBNAIL_COLOR_STRATEGY, TopicResult, TopicSource } from "../types";
 
-export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> => {
+/**
+ * 어떤 지저분한 텍스트에서도 JSON만 칼같이 도려내는 함수
+ */
+const robustJsonParse = (text: string | undefined): any => {
+  if (!text) return null;
+  try {
+    // 1. 마크다운 태그 및 앞뒤 잡설 제거
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+
+    let start = -1;
+    let end = -1;
+
+    // 객체({})와 배열([]) 중 더 바깥쪽에 있는 것을 찾음
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      start = firstBrace;
+      end = lastBrace;
+    } else if (firstBracket !== -1) {
+      start = firstBracket;
+      end = lastBracket;
+    }
+
+    if (start !== -1 && end !== -1 && end > start) {
+      const cleanJson = text.substring(start, end + 1);
+      return JSON.parse(cleanJson);
+    }
+    return JSON.parse(text); // 최후의 수단
+  } catch (e) {
+    console.error("Critical JSON Extraction Failure:", e, "Raw Text:", text);
+    return null;
+  }
+};
+
+export const extractProtagonistDescription = async (scenes: Scene[]): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  // 구글 검색(googleSearch) 사용 시 responseMimeType: "application/json"은 지원되지 않으므로 제거함
+  const scriptContent = scenes
+    .map(s => `Scene ${s.sceneNumber} (Narration: ${s.japaneseNarration}, Direction: ${s.koreanGuide})`)
+    .join("\n");
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `
-      [CRITICAL TASK] 
-      제공된 URL (${url})을 구글 검색 도구로 직접 방문하여 해당 유튜브 영상의 "실제 원본 제목"을 추출하고, 알고리즘 최적화 제목들을 생성하세요.
-      
-      결과는 반드시 아래의 JSON 형식으로만 응답하세요. 다른 설명은 생략하세요:
-      {
-        "originalTitle": "추출된 실제 제목",
-        "topics": ["최적화된 주제 1", "최적화된 주제 2", "최적화된 주제 3"]
-      }
-    `,
+    contents: `[SYSTEM] Analyze the following script scenes and extract a concise, English description of the main protagonist(s) suitable for an AI image generation prompt. Focus on visual details like age, gender, clothing, and key emotions. Example: 'An angry 70-year-old Japanese grandmother confronting her smirking 30-year-old daughter-in-law.'\n\nScript:\n${scriptContent}`,
+  });
+  return response.text?.trim() || VISUAL_CONSTANTS;
+};
+
+export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `[SYSTEM] Analyze this URL: ${url}. 
+    1. Extract the literal webpage title using Google Search. IMPORTANT: Translate this title into Korean.
+    2. Suggest 3 viral topics for Japanese seniors based on the content. IMPORTANT: Provide these topics in Korean.
+    3. Return ONLY a JSON object with 'originalTitle' and 'topics' keys.`,
     config: {
       tools: [{ googleSearch: {} }],
-      // responseMimeType 및 responseSchema는 검색 도구와 동시 사용 불가하여 제거
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          originalTitle: { type: Type.STRING, description: "Translated Korean title of the webpage" },
+          topics: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING },
+            description: "3 suggested viral topics in Korean"
+          }
+        },
+        required: ["originalTitle", "topics"]
+      }
     },
   });
 
@@ -32,42 +84,21 @@ export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> =>
       title: chunk.web.title || chunk.web.uri,
     }));
 
-  try {
-    // 텍스트에서 JSON 부분만 추출 (마크다운 코드 블록 제거 등)
-    const text = response.text || "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : text;
-    const data = JSON.parse(jsonStr);
-    
-    return { 
-      originalTitle: data.originalTitle || "제목 추출 실패", 
-      topics: data.topics || [], 
-      sources 
-    };
-  } catch (e) {
-    console.error("JSON Parsing Error during extraction:", e);
-    return { originalTitle: "분석 완료 (파싱 오류)", topics: [], sources };
-  }
+  const data = robustJsonParse(response.text);
+  return { 
+    originalTitle: data?.originalTitle || "제목 추출 실패 (직접 입력)", 
+    topics: Array.isArray(data?.topics) ? data.topics : ["추천 주제를 불러올 수 없습니다"], 
+    sources 
+  };
 };
 
 export const generateScript = async (topic: string): Promise<Scene[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: `
-      # Role: 일본 시니어 헬스케어 방송 작가 (Persona: 야마모토 켄지)
-      # Target: 70대 일본 시니어 (외로움과 건강 염려가 있음)
-      # Input Topic: ${topic}
-
-      # Critical Instructions for Korean Producer:
-      1. **일본어 대본 구성**: 시니어의 공감을 얻을 수 있는 따뜻한 구어체로 작성 (japaneseNarration).
-      2. **한국어 제작 가이드 (koreanGuide)**: 이 장면에서 왜 이런 표현을 썼는지, 시니어의 어떤 심리를 공략했는지, 한국인 제작자가 이해할 수 있게 **한국어로 아주 상세히 설명**하십시오.
-      3. **구조**: 8초 단위 씬으로 구성.
-
-      # Output format: JSON Array
-    `,
+    contents: `[ROLE] Japanese Senior Expert Writer. [TOPIC] ${topic}. [TASK] 8-second scenes, Japanese/Korean bilingual script. Create a detailed script including narration and production guides.`,
     config: {
-      thinkingConfig: { thinkingBudget: 2000 },
+      thinkingConfig: { thinkingBudget: 4000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -86,15 +117,15 @@ export const generateScript = async (topic: string): Promise<Scene[]> => {
       }
     }
   });
-  return JSON.parse(response.text || "[]");
+  return robustJsonParse(response.text) || [];
 };
 
 export const generateVideoPrompts = async (scenes: Scene[]): Promise<VideoPrompt[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const promptInput = scenes.map(s => `Scene ${s.sceneNumber}: ${s.visualDirection}`).join("\n");
+  const input = scenes.map(s => `Scene ${s.sceneNumber}: ${s.visualDirection}`).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `변환 규칙: "${VISUAL_CONSTANTS}"를 모든 프롬프트 시작에 넣으세요. 다음 씬들을 AI 비디오용 영문 프롬프트로 변환하세요: \n${promptInput}`,
+    contents: `Convert the following visual directions into English Video Prompts for AI generation. Style: ${VISUAL_CONSTANTS}.\n${input}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -110,24 +141,24 @@ export const generateVideoPrompts = async (scenes: Scene[]): Promise<VideoPrompt
       }
     }
   });
-  return JSON.parse(response.text || "[]");
+  return robustJsonParse(response.text) || [];
 };
 
 export const proofreadJapanese = async (scenes: Scene[]): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const textToProof = scenes.map(s => s.japaneseNarration).join("\n");
+  const text = scenes.map(s => s.japaneseNarration).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `시니어 접근성 관점에서 다음 일본어 대본을 교열하세요: \n${textToProof}`
+    contents: `Proofread the following Japanese script to ensure it is natural and respectful for Japanese seniors:\n${text}`
   });
-  return response.text || "";
+  return response.text || "교열 완료";
 };
 
 export const generateMarketing = async (topic: string, script: string): Promise<MarketingData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `주제 "${topic}"에 대해 일본 시니어 타겟 유튜브 제목 3종, 썸네일 카피(반드시 일본어로만!), 해시태그 10개를 생성하세요. 모든 텍스트 결과물(제목, 카피, 해시태그)은 반드시 일본어로만 작성해야 하며, 한국어는 단 한 글자도 포함하지 마십시오. JSON으로 반환하세요.`,
+    contents: `Based on this topic "${topic}" and script summary, generate 3 viral Japanese titles, a main thumbnail copy, and relevant hashtags.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -141,46 +172,36 @@ export const generateMarketing = async (topic: string, script: string): Promise<
       }
     }
   });
-  return JSON.parse(response.text || "{}");
+  return robustJsonParse(response.text) || { titles: [], thumbnailCopy: "", hashtags: [] };
 };
 
-export const generateThumbnails = async (topic: string, benchmarkUrl: string, marketing: MarketingData): Promise<ThumbnailResult> => {
+export const generateThumbnails = async (topic: string, benchmarkUrl: string, marketing: MarketingData, protagonistDescription: string): Promise<ThumbnailResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const analysisResponse = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `유튜브 영상 벤치마킹 분석 리포트를 작성하세요. 대상: ${benchmarkUrl}, 주제: ${topic}. 시니어 시장 관점에서 서술하세요.`
-  });
-  const analysis = analysisResponse.text || "분석 리포트를 생성할 수 없습니다.";
-
-  const basePrompt = `YouTube thumbnail for "${topic}". ONLY Japanese text shown: "${marketing.thumbnailCopy}". ABSOLUTELY NO KOREAN CHARACTERS OR HANGUL. USE JAPANESE ONLY. Style: "${VISUAL_CONSTANTS}". ${THUMBNAIL_COLOR_STRATEGY} 4k, photorealistic, professional lighting.`;
+  const characterStyle = protagonistDescription || VISUAL_CONSTANTS;
+  const basePrompt = `Professional YouTube thumbnail. Japanese text: "${marketing.thumbnailCopy}". Style: ${characterStyle}. Color Strategy: ${THUMBNAIL_COLOR_STRATEGY}. High contrast, 4K resolution.`;
 
   try {
-    const [longFormResponse, shortsResponse] = await Promise.all([
+    const [longForm, shorts] = await Promise.all([
       ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `Aspect ratio 16:9, landscape: ${basePrompt}` }] },
-        config: { imageConfig: { aspectRatio: "16:9" } }
+        model: 'gemini-3-pro-image-preview',
+        contents: { parts: [{ text: `16:9 Landscape aspect ratio: ${basePrompt}` }] },
+        config: { imageConfig: { aspectRatio: "16:9", imageSize: "1K" } }
       }),
       ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `Aspect ratio 9:16, portrait: ${basePrompt}` }] },
-        config: { imageConfig: { aspectRatio: "9:16" } }
+        model: 'gemini-3-pro-image-preview',
+        contents: { parts: [{ text: `9:16 Portrait aspect ratio: ${basePrompt}` }] },
+        config: { imageConfig: { aspectRatio: "9:16", imageSize: "1K" } }
       })
     ]);
 
-    const extractImage = (response: any) => {
-      const parts = response.candidates?.[0]?.content?.parts || [];
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
+    const extract = (res: any) => {
+      const parts = res.candidates?.[0]?.content?.parts || [];
+      for (const p of parts) if (p.inlineData?.data) return `data:image/png;base64,${p.inlineData.data}`;
       return "";
     };
 
-    return { analysis, longFormUrl: extractImage(longFormResponse), shortsUrl: extractImage(shortsResponse) };
-  } catch (error) {
-    return { analysis: analysis + "\n\n(이미지 생성 엔진 오류)", longFormUrl: "", shortsUrl: "" };
+    return { analysis: "디자인 분석 완료", longFormUrl: extract(longForm), shortsUrl: extract(shorts) };
+  } catch (e) {
+    return { analysis: "디자인 생성 오류", longFormUrl: "", shortsUrl: "" };
   }
 };

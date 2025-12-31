@@ -54,6 +54,7 @@ export interface ProjectState {
   thumbnailResult: ThumbnailResult | null;
   currentStep: WorkflowStep;
   loading: boolean;
+  protagonistDescription: string;
 }
 
 export const VISUAL_CONSTANTS = "A Japanese elderly man, 72 years old, wise and kind face, round tortoise-shell glasses, small mole under left eye, beige cashmere cardigan, white shirt, silver hair neatly combed back, gentle Duchenne smile.";
@@ -73,8 +74,7 @@ declare global {
     openSelectKey: () => Promise<void>;
   }
   interface Window {
-    // Fixed: All declarations of 'aistudio' must have identical modifiers.
-    // Removed readonly to allow merging with other possible declarations.
+    // FIX: Removed 'readonly' modifier to resolve "All declarations of 'aistudio' must have identical modifiers" error.
     aistudio: AIStudio;
   }
 }
