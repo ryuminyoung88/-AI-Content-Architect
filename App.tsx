@@ -290,7 +290,7 @@ const App: React.FC = () => {
                           AI Studio(또는 API 호출 시) 우측 패널에서 아래와 같이 설정을 변경하여 제미나이를 '막장 드라마 전문 작가'로 변신시킬 수 있습니다.
                       </p>
                       <ul className="text-xs text-slate-300 list-disc list-inside mt-2 space-y-1">
-                          {/* FIX: Updated model name to 'gemini-3-pro-preview' which is the full model name, instead of an alias. */}
+                          {/* FIX: Updated model name to 'gemini-3-pro-preview' which is not a deprecated model. */}
                           <li><strong>Model:</strong> gemini-3-pro-preview</li>
                           <li><strong>Temperature (창의성):</strong> 1.7 이상으로 설정 (감정적, 자극적 표현 유도)</li>
                       </ul>

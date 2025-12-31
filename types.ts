@@ -67,5 +67,17 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-// FIX: Removed conflicting global declaration for `window.aistudio`.
-// This declaration was redundant and caused type errors due to another existing declaration in the project.
+// FIX: Defined an explicit AIStudio interface to resolve declaration conflicts for window.aistudio.
+// This addresses the TypeScript error about subsequent property declarations having different types.
+interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+// AI Studio 환경과의 통신을 위해 `window.aistudio` 객체의 타입을 전역으로 선언합니다.
+// 이 타입이 없으면 TypeScript 컴파일러가 `window.aistudio`를 인식하지 못해 빌드 오류가 발생합니다.
+declare global {
+  interface Window {
+    aistudio: AIStudio;
+  }
+}
