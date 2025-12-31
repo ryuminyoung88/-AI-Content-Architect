@@ -1,4 +1,3 @@
-
 export enum WorkflowStep {
   PLANNING = 1,
   VIDEO_PROMPT = 2,
@@ -67,11 +66,6 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-/**
- * Fix: Augment global scope to include AIStudio and extend Window.
- * Moving the interface inside declare global ensures that 'AIStudio' refers to the same global type, 
- * preventing "subsequent property declarations" errors when extending the Window interface.
- */
 declare global {
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
