@@ -14,7 +14,7 @@ export interface Scene {
   japaneseNarration: string;
   japaneseSubtitles: string;
   koreanTranslation: string;
-  koreanGuide: string; // 추가: 한국인 제작자를 위한 장면별 의도 설명
+  koreanGuide: string;
 }
 
 export interface VideoPrompt {
@@ -65,3 +65,16 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 3. 해결책, 희망사항 (Solution/Hope) = 연두색 (Green: #00FF00)
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
+
+// 전역 window 객체 타입 정의 (Vercel 빌드 시 tsc 에러 방지)
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+  interface Window {
+    // Fixed: All declarations of 'aistudio' must have identical modifiers.
+    // Removed readonly to allow merging with other possible declarations.
+    aistudio: AIStudio;
+  }
+}
