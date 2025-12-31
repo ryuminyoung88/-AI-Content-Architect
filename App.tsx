@@ -64,7 +64,7 @@ const App: React.FC = () => {
 # Output Format:
 | 구분 | 화자 | 일본어 대본 | 한국어 의미 | 연기 톤 가이드 |
 |:---:|:---:|:---|:---|:---|
-| 내레이션 | 시어머니 | (ため息) 皆さん、聞いてくださいよ... | (한숨) 여러분, 제 말 좀 들어보세요... | 억울하고 답답하게 |
+| 내레이션 | 시어머니 | (ため息) 皆さん, 聞いてくださいよ... | (한숨) 여러분, 제 말 좀 들어보세요... | 억울하고 답답하게 |
 | 대사 | 며느리 | お義母さん, それ汚いから捨てますね。 | 어머님, 그거 더러우니까 버릴게요. | 차갑고 무시하듯이 |`;
 
   const artDirectorPrompt = `# Role: AI Art Director (Web-Novel Style)
@@ -79,19 +79,22 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    const init = async () => {
-      // Accessing aistudio from window with optional check to handle potential unavailability
-      if (window.aistudio) {
-        setApiKeySelected(await window.aistudio.hasSelectedApiKey());
+    const checkKey = async () => {
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setApiKeySelected(hasKey);
+      } else {
+        // aistudio 환경이 아닐 경우(일반 로컬 테스트 등) 기본적으로 true 설정
+        setApiKeySelected(true);
       }
     };
-    init();
+    checkKey();
   }, []);
 
   const handleError = (err: any) => {
     console.error("APP_ERROR:", err);
     const msg = err.message || "시스템 오류가 발생했습니다.";
-    if (msg.includes("entity was not found")) {
+    if (msg.includes("entity was not found") || msg.includes("API key")) {
       setApiKeySelected(false);
     } else {
       setError(msg);
@@ -119,7 +122,7 @@ const App: React.FC = () => {
     setState(p => ({ ...p, loading: true }));
     try {
       const scenes = await generateScript(state.topic);
-      if (!scenes.length) throw new Error("대본을 생성할 수 없습니다. 주제를 다시 확인해 주세요.");
+      if (!scenes || !scenes.length) throw new Error("대본을 생성할 수 없습니다. 주제를 다시 확인해 주세요.");
       const protagonistDesc = await extractProtagonistDescription(scenes);
       setState(p => ({ ...p, scenes, protagonistDescription: protagonistDesc, currentStep: WorkflowStep.VIDEO_PROMPT, loading: false }));
     } catch (e) { 
@@ -156,6 +159,13 @@ const App: React.FC = () => {
     } catch (e) { handleError(e); setState(p => ({ ...p, loading: false })); }
   };
 
+  const handleOpenSelectKey = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+      setApiKeySelected(true);
+    }
+  };
+
   const copyFullScript = () => {
     const fullText = state.scenes.map(s => s.japaneseNarration).join('\n');
     navigator.clipboard.writeText(fullText).then(() => {
@@ -178,8 +188,7 @@ const App: React.FC = () => {
           <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter">Access Required</h1>
           <p className="text-slate-400 text-sm leading-relaxed">이 시스템은 고성능 Pro 모델을 사용합니다. 유료 결제가 활성화된 API 키가 필요합니다.</p>
           <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block text-sky-500 text-xs font-bold hover:underline">Billing 가이드 확인 ↗</a>
-          {/* Using optional chaining to trigger the select key dialog safely */}
-          <button onClick={() => window.aistudio?.openSelectKey().then(() => setApiKeySelected(true))} className="btn-primary w-full py-4 uppercase tracking-widest font-black">API 키 설정하기</button>
+          <button onClick={handleOpenSelectKey} className="btn-primary w-full py-4 uppercase tracking-widest font-black">API 키 설정하기</button>
         </div>
       </div>
     );
@@ -281,20 +290,8 @@ const App: React.FC = () => {
                   <div className="space-y-2">
                       <h3 className="text-xl font-black text-amber-400">신규 드라마 전략: '쇼와(昭和)의 뒷방'</h3>
                       <p className="text-sm text-slate-400">
-                          사용자님의 채팅 내역을 기반으로, 일본 시니어의 '감정'을 직접 타격하여 조회수 폭발을 유도하는 '스캇토(사이다 썰)' 드라마 제작 가이드를 제안합니다. 아래 프롬프트를 활용하여 대본 생성을 시도해 보세요.
+                          일본 시니어의 '감정'을 직접 타격하여 조회수 폭발을 유도하는 '스캇토(사이다 썰)' 드라마 제작 가이드를 제안합니다. 아래 프롬프트를 활용하여 대본 생성을 시도해 보세요.
                       </p>
-                  </div>
-
-                  <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800">
-                      <p className="label-xs text-amber-500/80">🔧 제미나이 튜닝 (필수)</p>
-                      <p className="text-xs text-slate-400 mt-2">
-                          AI Studio(또는 API 호출 시) 우측 패널에서 아래와 같이 설정을 변경하여 제미나이를 '막장 드라마 전문 작가'로 변신시킬 수 있습니다.
-                      </p>
-                      <ul className="text-xs text-slate-300 list-disc list-inside mt-2 space-y-1">
-                          {/* Recommended to use gemini-3-pro-preview for complex reasoning tasks. */}
-                          <li><strong>Model:</strong> gemini-3-pro-preview</li>
-                          <li><strong>Temperature (창의성):</strong> 1.7 이상으로 설정 (감정적, 자극적 표현 유도)</li>
-                      </ul>
                   </div>
 
                   <div className="space-y-6">
@@ -334,14 +331,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
                   </div>
-
-                  <div className="border-t border-slate-800 pt-6 space-y-4">
-                      <p className="label-xs text-amber-400">💡 필승 전략 요약</p>
-                      <ul className="text-sm text-slate-300 list-disc list-inside space-y-2">
-                          <li><strong>성우 캐스팅:</strong> '억울한 할머니'와 '앙칼진 젊은 여자' 목소리 2개를 준비하여 대화 형식으로 만들면 몰입도가 5배 증가합니다.</li>
-                          <li><strong>썸네일 공식:</strong> 왼쪽(화난 시어머니 + 빨간 자막), 오른쪽(비웃는 며느리 + 파란 자막)의 대비 구도가 클릭을 유도합니다.</li>
-                      </ul>
-                  </div>
               </div>
 
               <div className="pro-card p-6 bg-sky-500/5 border-sky-500/20 space-y-4">
@@ -366,7 +355,6 @@ const App: React.FC = () => {
                   <div key={s.sceneNumber} className="pro-card p-8 border-l-4 border-sky-500">
                     <div className="flex justify-between items-center mb-6">
                       <span className="text-sky-500 font-black text-sm uppercase">SCENE_0{s.sceneNumber}</span>
-                      <span className="text-[10px] bg-slate-800 text-slate-500 px-2 py-1 rounded font-bold">8초 분량</span>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div className="space-y-6">
@@ -375,7 +363,7 @@ const App: React.FC = () => {
                           <p className="text-2xl font-bold text-white italic">"{s.japaneseNarration}"</p>
                         </div>
                         <div className="space-y-1">
-                          <p className="label-xs">한국어 번역 (검토용)</p>
+                          <p className="label-xs">한국어 번역</p>
                           <p className="text-sm text-slate-300 font-medium">{s.koreanTranslation}</p>
                         </div>
                       </div>
@@ -451,17 +439,12 @@ const App: React.FC = () => {
               <h2 className="heading-xl">임팩트 <span className="text-sky-500">디자인 터미널</span></h2>
               <div className="pro-card p-10 space-y-8">
                 <div className="space-y-4">
-                  <p className="label-xs">AI 추출 주인공 묘사 (수정 가능)</p>
+                  <p className="label-xs">AI 추출 주인공 묘사</p>
                   <textarea 
                     value={state.protagonistDescription} 
                     onChange={e => setState(p => ({ ...p, protagonistDescription: e.target.value }))} 
-                    placeholder="대본의 주인공을 묘사하는 영문 프롬프트가 여기에 표시됩니다."
                     className="pro-input w-full min-h-[100px] text-sm mono" 
                   />
-                </div>
-                <div className="space-y-2">
-                  <p className="label-xs">벤치마킹 레퍼런스</p>
-                  <input type="text" value={benchmarkUrl} onChange={e => setBenchmarkUrl(e.target.value)} placeholder="참고할 레퍼런스 이미지 링크 (선택사항)" className="pro-input w-full" />
                 </div>
                 <button onClick={onGenThumbnails} className="btn-primary w-full py-5 font-black">4K 썸네일 합성 시작</button>
               </div>
@@ -479,11 +462,7 @@ const App: React.FC = () => {
 
           {state.currentStep === WorkflowStep.FINAL_REVIEW && (
             <div className="pro-card p-16 space-y-12 animate-fade border-t-8 border-sky-500">
-              <div className="space-y-4">
-                <h1 className="text-5xl font-black text-white italic tracking-tighter uppercase">PROJECT <span className="text-sky-500">FINALIZED</span></h1>
-                <p className="text-slate-500 text-sm font-medium">Deepscara Content Architecture System - 배포 준비 완료</p>
-              </div>
-              
+              <h1 className="text-5xl font-black text-white italic tracking-tighter uppercase">PROJECT <span className="text-sky-500">FINALIZED</span></h1>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-y border-slate-800 py-12">
                 <div className="space-y-2">
                   <p className="label-xs">프로젝트 주제</p>
@@ -491,17 +470,16 @@ const App: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <p className="label-xs">영상 구조</p>
-                  <p className="text-xl font-bold text-white">{state.scenes.length}개 전략 장면 구성</p>
+                  <p className="text-xl font-bold text-white">{state.scenes.length}개 장면</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="label-xs">에셋 상태</p>
-                  <p className="text-xl font-bold text-sky-500 font-mono tracking-widest italic">DEPLOYMENT READY</p>
+                  <p className="label-xs">상태</p>
+                  <p className="text-xl font-bold text-sky-500 font-mono tracking-widest italic">READY</p>
                 </div>
               </div>
-
               <div className="flex gap-4 no-print">
-                <button onClick={() => window.print()} className="btn-primary flex-grow py-6 text-2xl font-black shadow-2xl shadow-sky-500/20">PDF 리포트 내보내기</button>
-                <button onClick={() => window.location.reload()} className="bg-slate-900 text-slate-500 px-8 py-6 rounded font-black uppercase text-xs hover:text-white transition-colors">신규 설계</button>
+                <button onClick={() => window.print()} className="btn-primary flex-grow py-6 text-2xl font-black">리포트 출력</button>
+                <button onClick={() => window.location.reload()} className="bg-slate-900 text-slate-500 px-8 py-6 rounded font-black uppercase text-xs">초기화</button>
               </div>
             </div>
           )}
