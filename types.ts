@@ -67,14 +67,5 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-// 전역 window 객체 타입 정의 (Vercel 빌드 시 tsc 에러 방지)
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-  interface Window {
-    // FIX: Removed a problematic comment that was likely causing the TypeScript error.
-    aistudio: AIStudio;
-  }
-}
+// FIX: Removed conflicting global declaration for `window.aistudio` to resolve type errors.
+// The errors indicate this type is already declared elsewhere in the project.
