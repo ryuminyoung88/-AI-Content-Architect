@@ -67,15 +67,18 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-// Renamed to AIStudio to fix the type mismatch error in the global Window declaration
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
+/**
+ * Fix: Augment global scope to include AIStudio and extend Window.
+ * Moving the interface inside declare global ensures that 'AIStudio' refers to the same global type, 
+ * preventing "subsequent property declarations" errors when extending the Window interface.
+ */
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
-    // Corrected to use the AIStudio interface name to match subsequent declarations
     aistudio?: AIStudio;
   }
 }
