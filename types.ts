@@ -69,14 +69,12 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 
 // AI Studio 환경과의 통신을 위해 `window.aistudio` 객체의 타입을 전역으로 선언합니다.
 // 이 코드는 App.tsx에서 TypeScript 컴파일 오류가 발생하는 것을 방지합니다.
-// FIX: Define the AIStudio interface and use it in the global window declaration to resolve conflicts with other potential declarations of `window.aistudio`.
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
+// FIX: To resolve conflicting global type declarations for `window.aistudio`, the type is now defined inline. This avoids issues with multiple `AIStudio` interface definitions across the project.
 declare global {
   interface Window {
-    aistudio: AIStudio;
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
   }
 }
