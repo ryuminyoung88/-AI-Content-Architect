@@ -64,19 +64,12 @@ const App: React.FC = () => {
     
     if (isQuota) {
       setError({
-        message: "현재 무료 티어 API 사용 한도를 초과했습니다. Gemini 3 Pro 및 검색 도구는 무료 계정에서 매우 엄격한 제한(RPM)이 적용됩니다. 중단 없는 작업을 위해 '결제가 연결된 유료 프로젝트의 API 키'를 사용하시는 것을 강력히 권장합니다.",
+        message: "현재 무료 티어 API 사용 한도를 초과했습니다. 유료 API 키 사용을 권장합니다.",
         isQuota: true
       });
-    } else if (errorMsg.includes("Requested entity was not found")) {
-      setError({
-        message: "선택된 API 키가 유효하지 않거나 삭제되었습니다. 아래 버튼을 눌러 키를 다시 설정해주세요.",
-        isQuota: false
-      });
-      // @ts-ignore
-      if (window.aistudio) await window.aistudio.openSelectKey();
     } else {
       setError({
-        message: "시스템 통신 중 예기치 못한 오류가 발생했습니다: " + errorMsg,
+        message: "시스템 통신 중 오류 발생: " + errorMsg,
         isQuota: false
       });
     }
@@ -88,15 +81,12 @@ const App: React.FC = () => {
       // @ts-ignore
       await window.aistudio.openSelectKey();
       setError(null);
-      // 키 선택 후 바로 재시도를 안내하거나 자동으로 재시도하게 할 수 있음
     }
   };
 
   const handleExtractTopics = async () => {
     if (!extractUrl.trim() || isExtracting) return;
     setIsExtracting(true);
-    setOriginalTitle('');
-    setSuggestedTopics([]);
     setError(null);
     try {
       const result = await extractTopicsFromUrl(extractUrl);
@@ -201,6 +191,15 @@ const App: React.FC = () => {
       <div className="flex-grow pt-24 pb-20 px-8 max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-12">
         <aside className="no-print">
           <div className="sticky top-24 space-y-1.5">
+            {/* 비즈니스 환영 영역 */}
+            <div className="p-5 mb-6 bg-sky-500/5 border border-sky-500/20 rounded-xl">
+               <p className="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-2">Workspace Console</p>
+               <h3 className="text-white font-bold text-base mb-2">Executive Admin</h3>
+               <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
+                 "데이터 기반의 정교한 설계는 성공적인 글로벌 콘텐츠 진출을 위한 핵심 아키텍처입니다."
+               </p>
+            </div>
+
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-4 mb-4">Pipeline Workflow</p>
             {steps.map((s) => (
               <div 
@@ -228,25 +227,16 @@ const App: React.FC = () => {
                   <span className="text-white font-black text-xl">!</span>
                 </div>
                 <div>
-                  <h4 className="text-rose-500 font-bold text-lg mb-1">{error.isQuota ? "리소스 한도 초과 (Quota Exceeded)" : "통신 오류"}</h4>
+                  <h4 className="text-rose-500 font-bold text-lg mb-1">{error.isQuota ? "리소스 한도 초과" : "통신 오류"}</h4>
                   <p className="text-slate-300 text-sm leading-relaxed max-w-2xl">{error.message}</p>
-                  <div className="flex items-center gap-4 mt-3">
-                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-sky-400 text-xs font-bold underline hover:text-sky-300 transition-colors italic">Google Cloud 유료 결제 설정 가이드</a>
-                    <span className="text-slate-600 text-[10px] mono">ERR_CODE: {error.isQuota ? "429_LIMIT" : "SYS_FAIL"}</span>
-                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <button 
-                  onClick={openKeyDialog}
-                  className="px-6 py-3 bg-white text-slate-900 rounded-lg font-bold text-sm hover:bg-sky-500 hover:text-white transition-all whitespace-nowrap shadow-xl"
-                >
-                  본인 유료 API 키 연결하기
-                </button>
-                {error.isQuota && (
-                   <p className="text-[10px] text-rose-400 text-center font-bold animate-pulse">※ 무료 티어는 분당 요청 수가 매우 낮습니다.</p>
-                )}
-              </div>
+              <button 
+                onClick={openKeyDialog}
+                className="px-6 py-3 bg-white text-slate-900 rounded-lg font-bold text-sm hover:bg-sky-500 hover:text-white transition-all whitespace-nowrap"
+              >
+                API 키 설정
+              </button>
             </div>
           )}
 
@@ -257,19 +247,7 @@ const App: React.FC = () => {
                  <div className="w-2 h-2 bg-sky-500 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></div>
                  <div className="w-2 h-2 bg-sky-500 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></div>
                </div>
-               <div className="flex flex-col items-center">
-                 <p className="text-white font-bold text-sm tracking-widest uppercase mb-2">
-                   {isExtracting ? 'Analyzing URL Architecture...' : 'Processing Deep Intelligence...'}
-                 </p>
-                 <div className="w-48 h-[2px] bg-slate-800 rounded-full overflow-hidden relative">
-                   <div className="absolute inset-0 bg-sky-500 animate-[shimmer_1.5s_infinite_linear]" style={{
-                     width: '40%',
-                     left: '-40%',
-                     backgroundImage: 'linear-gradient(90deg, transparent, #38bdf8, transparent)',
-                   }}></div>
-                 </div>
-                 <p className="text-slate-600 text-[10px] mt-4 mono tracking-tighter">Please wait while the AI handles high-complexity tasks.</p>
-               </div>
+               <p className="text-white font-bold text-sm tracking-widest uppercase">Processing Intelligence...</p>
             </div>
           )}
 
@@ -300,13 +278,13 @@ const App: React.FC = () => {
 
                 {suggestedTopics.length > 0 && (
                   <div className="space-y-4 animate-fade">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Algorithm Suggested Topics (추천 주제)</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Suggested Topics</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {suggestedTopics.map((t, idx) => (
                         <button 
                           key={idx} 
                           onClick={() => setState(p => ({...p, topic: t}))} 
-                          className={`p-6 rounded-lg border-2 text-left transition-all ${state.topic === t ? 'border-sky-500 bg-sky-500/10 shadow-lg shadow-sky-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'}`}
+                          className={`p-6 rounded-lg border-2 text-left transition-all ${state.topic === t ? 'border-sky-500 bg-sky-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'}`}
                         >
                           <span className="text-slate-300 font-bold block">{t}</span>
                         </button>
@@ -316,7 +294,6 @@ const App: React.FC = () => {
                 )}
 
                 <div className="space-y-4 pt-4 border-t border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Final Project Topic (최종 확정 주제)</p>
                   <textarea 
                     value={state.topic} 
                     onChange={e => setState(p => ({...p, topic: e.target.value}))}
@@ -335,42 +312,24 @@ const App: React.FC = () => {
                 <h2 className="heading-xl">야마모토 켄지의 <span className="text-sky-500">심층 대본</span></h2>
                 <button 
                   onClick={() => copyToClipboard(state.scenes.map(s => s.japaneseNarration).join('\n'), 'all-script')}
-                  className={`px-6 py-3 rounded-full font-bold text-xs transition-all shadow-lg ${copyType === 'all-script' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900 hover:bg-sky-500 hover:text-white'}`}
+                  className={`px-6 py-3 rounded-full font-bold text-xs transition-all ${copyType === 'all-script' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900'}`}
                 >
-                  {copyType === 'all-script' ? '전체 대본 복사 완료!' : '일본어 전체 내레이션 복사 (ElevenLabs용)'}
+                  {copyType === 'all-script' ? '복사 완료!' : '내레이션 전체 복사'}
                 </button>
               </div>
               <div className="space-y-6">
                 {state.scenes.map(s => (
                   <div key={s.sceneNumber} className="pro-card p-8 space-y-6 border-l-4 border-sky-500">
-                    <div className="flex justify-between items-center">
-                      <span className="mono text-2xl font-black text-slate-700">SCENE #0{s.sceneNumber}</span>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-2">Japanese Narration</p>
-                      <p className="text-2xl font-bold text-white leading-relaxed italic">"{s.japaneseNarration}"</p>
-                    </div>
+                    <span className="mono text-2xl font-black text-slate-700">SCENE #0{s.sceneNumber}</span>
+                    <p className="text-2xl font-bold text-white italic">"{s.japaneseNarration}"</p>
                     <div className="bg-emerald-500/5 p-6 rounded-lg border border-emerald-500/30">
-                      <div className="flex items-center gap-2 mb-3">
-                         <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                         <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest">Kenji's Production Guide (제작 가이드)</span>
-                      </div>
+                      <p className="text-[11px] font-black text-emerald-500 uppercase tracking-widest mb-2">Kenji's Production Guide</p>
                       <p className="text-sm text-slate-200 leading-relaxed font-medium">{s.koreanGuide}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Visual Subtitle</p>
-                        <p className="text-sm text-slate-300 font-bold">{s.japaneseSubtitles}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">KR Translation</p>
-                        <p className="text-sm text-slate-500 italic">{s.koreanTranslation}</p>
-                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <button onClick={handleToStep3} className="btn-primary w-full py-4 shadow-xl shadow-sky-500/10">영상 추출 프롬프트 생성</button>
+              <button onClick={handleToStep3} className="btn-primary w-full py-4">영상 추출 프롬프트 생성</button>
             </div>
           )}
 
@@ -382,7 +341,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {state.videoPrompts.map(vp => (
                     <div key={vp.sceneNumber} className="pro-card p-6">
-                      <p className="bg-slate-950 p-4 rounded text-xs mono text-slate-400 leading-relaxed">{vp.englishPrompt}</p>
+                      <p className="bg-slate-950 p-4 rounded text-xs mono text-slate-400">{vp.englishPrompt}</p>
                     </div>
                   ))}
                 </div>
@@ -397,45 +356,18 @@ const App: React.FC = () => {
                 </div>
                 <div className="pro-card p-8 border-l-4 border-sky-500 space-y-10">
                    <div className="space-y-4">
-                      <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Kenji's Strategy Note</p>
-                      <p className="text-lg text-slate-300 italic bg-slate-950 p-4 rounded border border-slate-800">"{state.proofreadNotes}"</p>
-                   </div>
-                   
-                   <div className="space-y-4">
-                      <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Optimized Titles (유튜브 제목)</p>
+                      <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Optimized Titles</p>
                       <div className="space-y-3">
                         {state.marketing?.titles.map((t, i) => (
-                          <div key={i} className="group flex justify-between items-center p-4 bg-slate-900 border border-slate-800 rounded hover:border-sky-500/50 transition-colors">
+                          <div key={i} className="flex justify-between items-center p-4 bg-slate-900 rounded">
                             <span className="text-white font-bold">{t}</span>
-                            <button 
-                              onClick={() => copyToClipboard(t, `title-${i}`)}
-                              className={`text-[10px] px-3 py-1 rounded font-bold transition-all ${copyType === `title-${i}` ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-sky-500 group-hover:text-slate-900'}`}
-                            >
-                              {copyType === `title-${i}` ? '복사됨!' : '제목 복사'}
-                            </button>
+                            <button onClick={() => copyToClipboard(t, `title-${i}`)} className="text-[10px] text-sky-500 font-bold uppercase">Copy</button>
                           </div>
                         ))}
                       </div>
                    </div>
-
-                   <div className="space-y-4 pt-6 border-t border-slate-800">
-                      <div className="flex justify-between items-center">
-                        <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Viral Hashtags (해시태그)</p>
-                        <button 
-                          onClick={() => copyToClipboard(state.marketing?.hashtags.join(' ') || '', 'hashtags')}
-                          className={`text-[11px] px-4 py-2 rounded-full font-bold transition-all ${copyType === 'hashtags' ? 'bg-emerald-500 text-white' : 'bg-sky-500 text-slate-900 shadow-lg shadow-sky-500/20'}`}
-                        >
-                          {copyType === 'hashtags' ? '모든 태그 복사 완료!' : '해시태그 전체 복사'}
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-2 p-6 bg-slate-950 rounded-lg border border-slate-900">
-                         {state.marketing?.hashtags.map((tag, i) => (
-                           <span key={i} className="px-3 py-1 bg-slate-900 border border-slate-800 rounded text-xs text-slate-400 mono">{tag}</span>
-                         ))}
-                      </div>
-                   </div>
                 </div>
-                <button onClick={() => setState(p => ({...p, currentStep: WorkflowStep.THUMBNAIL_GEN}))} className="btn-primary w-full py-4">썸네일 디자인 터미널 오픈</button>
+                <button onClick={() => setState(p => ({...p, currentStep: WorkflowStep.THUMBNAIL_GEN}))} className="btn-primary w-full py-4">썸네일 디자인 터미널</button>
              </div>
           )}
 
@@ -451,11 +383,11 @@ const App: React.FC = () => {
                 {state.thumbnailResult && (
                   <div className="space-y-8 animate-fade">
                      <div className="pro-card p-8 bg-rose-500/5 border-l-4 border-rose-500">
-                        <p className="text-slate-200 italic leading-relaxed">{state.thumbnailResult.analysis}</p>
+                        <p className="text-slate-200 italic">{state.thumbnailResult.analysis}</p>
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <img src={state.thumbnailResult.longFormUrl} className="pro-card p-2 w-full" alt="16:9" />
-                        <img src={state.thumbnailResult.shortsUrl} className="pro-card p-2 w-full max-w-[300px] mx-auto" alt="9:16" />
+                        {state.thumbnailResult.longFormUrl && <img src={state.thumbnailResult.longFormUrl} className="pro-card w-full" alt="16:9" />}
+                        {state.thumbnailResult.shortsUrl && <img src={state.thumbnailResult.shortsUrl} className="pro-card w-full max-w-[300px] mx-auto" alt="9:16" />}
                      </div>
                      <button onClick={() => setState(p => ({...p, currentStep: WorkflowStep.FINAL_REVIEW}))} className="btn-primary w-full py-6 text-xl bg-white text-slate-900">최종 리포트 컴파일링</button>
                   </div>
@@ -466,23 +398,22 @@ const App: React.FC = () => {
           {state.currentStep === WorkflowStep.FINAL_REVIEW && (
             <div className="space-y-10 animate-fade py-6 printable-report-section">
               <div className="print-only mb-12 border-b-8 border-sky-500 pb-8">
-                <h1 className="text-4xl font-black text-sky-900">DEEPSCARA ANALYSIS REPORT</h1>
+                <h1 className="text-4xl font-black text-sky-900 uppercase">Analysis Report: Deepscara Strategic Insight</h1>
               </div>
 
               <div className="pro-card p-10 space-y-8">
-                <h3 className="text-xl font-bold text-sky-500 border-b border-slate-800 pb-6">01. 프로젝트 개요</h3>
-                <p className="text-lg font-bold text-sky-500 bg-sky-500/5 p-4 rounded border border-sky-500/30 italic">"{state.topic}"</p>
+                <h3 className="text-xl font-bold text-sky-500 border-b border-slate-800 pb-6 uppercase">01. Project Context</h3>
+                <p className="text-lg font-bold text-sky-500 bg-sky-500/5 p-4 rounded border border-sky-500/30">"{state.topic}"</p>
               </div>
 
               <div className="pro-card p-10 space-y-8">
-                <h3 className="text-xl font-bold text-sky-500 border-b border-slate-800 pb-6">02. 켄지 스타일 시나리오 및 한국어 가이드</h3>
+                <h3 className="text-xl font-bold text-sky-500 border-b border-slate-800 pb-6 uppercase">02. Scene Architecture</h3>
                 <div className="space-y-6">
                   {state.scenes.map(s => (
-                    <div key={s.sceneNumber} className="bg-slate-950/30 p-6 rounded border border-slate-800 space-y-4">
-                      <p className="text-[10px] font-bold text-slate-600 mono">SCENE #0{s.sceneNumber}</p>
-                      <p className="text-xl font-bold text-white italic">"{s.japaneseNarration}"</p>
-                      <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded text-sm text-emerald-100">
-                        <strong>제작 가이드:</strong> {s.koreanGuide}
+                    <div key={s.sceneNumber} className="bg-slate-950/30 p-6 rounded border border-slate-800">
+                      <p className="text-xl font-bold text-white mb-3">"{s.japaneseNarration}"</p>
+                      <div className="text-sm text-emerald-100/70">
+                        <strong>Guide:</strong> {s.koreanGuide}
                       </div>
                     </div>
                   ))}
@@ -490,7 +421,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="no-print pt-10 flex gap-4">
-                <button onClick={handlePrint} className="flex-grow btn-primary py-6 text-xl">PDF 분석 리포트 저장</button>
+                <button onClick={handlePrint} className="flex-grow btn-primary py-6 text-xl shadow-2xl">PDF 분석 리포트 저장</button>
                 <button onClick={() => window.location.reload()} className="px-10 py-6 border border-slate-800 rounded-lg text-slate-500 font-bold">시스템 재부팅</button>
               </div>
             </div>
