@@ -66,13 +66,16 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
+// Define AIStudio interface to match existing declarations in the environment
+export interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
 
+declare global {
   interface Window {
+    // Fixed: Subsequent property declarations must have the same type.
+    // Property 'aistudio' must be of type 'AIStudio'.
     aistudio?: AIStudio;
   }
 }

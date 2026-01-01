@@ -65,7 +65,7 @@ const App: React.FC = () => {
 | 구분 | 화자 | 일본어 대본 | 한국어 의미 | 연기 톤 가이드 |
 |:---:|:---:|:---|:---|:---|
 | 내레이션 | 시어머니 | (ため息) 皆さん, 聞いてくださいよ... | (한숨) 여러분, 제 말 좀 들어보세요... | 억울하고 답답하게 |
-| 대사 | 며느리 | お義母さん, それ汚いから捨てますね。 | 어머님, 그거 더러우니까 버릴게요. | 차갑고 무시하듯이 |`;
+| 대사 | 며느리 | お義母さん, それ汚이거 더러우니까 버릴게요. | 어머님, 그거 더러우니까 버릴게요. | 차갑고 무시하듯이 |`;
 
   const artDirectorPrompt = `# Role: AI Art Director (Web-Novel Style)
 # Task: Step 2 대본의 주요 감정선을 표현할 '삽화(Illustration)' 프롬프트를 작성하라.
@@ -80,11 +80,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkKey = async () => {
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+      if (window.aistudio?.hasSelectedApiKey) {
         const hasKey = await window.aistudio.hasSelectedApiKey();
         setApiKeySelected(hasKey);
       } else {
-        // aistudio 환경이 아닐 경우(일반 로컬 테스트 등) 기본적으로 true 설정
         setApiKeySelected(true);
       }
     };
@@ -160,7 +159,7 @@ const App: React.FC = () => {
   };
 
   const handleOpenSelectKey = async () => {
-    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+    if (window.aistudio?.openSelectKey) {
       await window.aistudio.openSelectKey();
       setApiKeySelected(true);
     }
