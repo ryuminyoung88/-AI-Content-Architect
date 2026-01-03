@@ -66,17 +66,4 @@ export const THUMBNAIL_COLOR_STRATEGY = `
 4. 배경 및 자막 (Background & Text): 대비를 위해 검정/어두운 배경 위 굵은 폰트 필수.
 `;
 
-declare global {
-  // Use the AIStudio interface to match the environment's pre-defined type
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-
-  interface Window {
-    // The 'aistudio' property must use the 'AIStudio' type to avoid declaration conflicts
-    aistudio: AIStudio;
-  }
-}
-
 export {};

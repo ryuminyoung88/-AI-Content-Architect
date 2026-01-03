@@ -67,18 +67,7 @@ export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> =>
     3. Return ONLY a JSON object with 'originalTitle' and 'topics' keys.`,
     config: {
       tools: [{ googleSearch: {} }],
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          originalTitle: { type: Type.STRING },
-          topics: { 
-            type: Type.ARRAY, 
-            items: { type: Type.STRING }
-          }
-        },
-        required: ["originalTitle", "topics"]
-      }
+      // Note: responseMimeType and responseSchema are not recommended when using the googleSearch tool as text output may be unpredictable.
     },
   });
 
@@ -104,6 +93,8 @@ export const generateScript = async (topic: string): Promise<Scene[]> => {
     model: "gemini-3-pro-preview",
     contents: `[ROLE] Japanese Senior Expert Writer. [TOPIC] ${topic}. Create a detailed 5-8 scene script including narration and production guides. Output in JSON format.`,
     config: {
+      // Per guidelines, if using thinkingBudget, it is recommended to also set maxOutputTokens to ensure sufficient space for the final response.
+      maxOutputTokens: 10000,
       thinkingConfig: { thinkingBudget: 4000 },
       responseMimeType: "application/json",
       responseSchema: {
