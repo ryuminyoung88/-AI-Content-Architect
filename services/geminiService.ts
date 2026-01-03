@@ -7,7 +7,6 @@ import { Scene, VideoPrompt, MarketingData, VISUAL_CONSTANTS, ThumbnailResult, T
 const robustJsonParse = (text: string | undefined): any => {
   if (!text) return null;
   try {
-    // 1. 마크다운 태그 및 앞뒤 잡설 제거
     const firstBrace = text.indexOf('{');
     const lastBrace = text.lastIndexOf('}');
     const firstBracket = text.indexOf('[');
@@ -16,7 +15,6 @@ const robustJsonParse = (text: string | undefined): any => {
     let start = -1;
     let end = -1;
 
-    // 객체({})와 배열([]) 중 더 바깥쪽에 있는 것을 찾음
     if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
       start = firstBrace;
       end = lastBrace;
@@ -29,14 +27,22 @@ const robustJsonParse = (text: string | undefined): any => {
       const cleanJson = text.substring(start, end + 1);
       return JSON.parse(cleanJson);
     }
-    return JSON.parse(text); // 최후의 수단
+    return JSON.parse(text);
   } catch (e) {
     console.error("Critical JSON Extraction Failure:", e, "Raw Text:", text);
     return null;
   }
 };
 
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+/**
+ * 매 호출 시점에 process.env.API_KEY를 참조하여 인스턴스를 생성합니다.
+ * 이는 aistudio 다이얼로그에서 키가 변경될 경우에 대비하기 위함입니다.
+ */
+const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API_KEY is not configured.");
+  return new GoogleGenAI({ apiKey });
+};
 
 export const extractProtagonistDescription = async (scenes: Scene[]): Promise<string> => {
   const ai = getAiClient();
@@ -46,7 +52,7 @@ export const extractProtagonistDescription = async (scenes: Scene[]): Promise<st
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `[SYSTEM] Analyze the following script scenes and extract a concise, English description of the main protagonist(s) suitable for an AI image generation prompt. Focus on visual details like age, gender, clothing, and key emotions. Example: 'An angry 70-year-old Japanese grandmother confronting her smirking 30-year-old daughter-in-law.'\n\nScript:\n${scriptContent}`,
+    contents: `[SYSTEM] Analyze the following script scenes and extract a concise, English description of the main protagonist(s) suitable for an AI image generation prompt. Focus on visual details like age, gender, clothing, and key emotions.\n\nScript:\n${scriptContent}`,
   });
   return response.text?.trim() || VISUAL_CONSTANTS;
 };
@@ -56,8 +62,8 @@ export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> =>
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `[SYSTEM] Analyze this URL: ${url}. 
-    1. Extract the literal webpage title using Google Search. IMPORTANT: Translate this title into Korean.
-    2. Suggest 3 viral topics for Japanese seniors based on the content. IMPORTANT: Provide these topics in Korean.
+    1. Extract the literal webpage title using Google Search. Translate this title into Korean.
+    2. Suggest 3 viral topics for Japanese seniors based on the content in Korean.
     3. Return ONLY a JSON object with 'originalTitle' and 'topics' keys.`,
     config: {
       tools: [{ googleSearch: {} }],
@@ -65,11 +71,10 @@ export const extractTopicsFromUrl = async (url: string): Promise<TopicResult> =>
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          originalTitle: { type: Type.STRING, description: "Translated Korean title of the webpage" },
+          originalTitle: { type: Type.STRING },
           topics: { 
             type: Type.ARRAY, 
-            items: { type: Type.STRING },
-            description: "3 suggested viral topics in Korean"
+            items: { type: Type.STRING }
           }
         },
         required: ["originalTitle", "topics"]
@@ -97,7 +102,7 @@ export const generateScript = async (topic: string): Promise<Scene[]> => {
   const ai = getAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: `[ROLE] Japanese Senior Expert Writer. [TOPIC] ${topic}. [TASK] 8-second scenes, Japanese/Korean bilingual script. Create a detailed script including narration and production guides.`,
+    contents: `[ROLE] Japanese Senior Expert Writer. [TOPIC] ${topic}. Create a detailed 5-8 scene script including narration and production guides. Output in JSON format.`,
     config: {
       thinkingConfig: { thinkingBudget: 4000 },
       responseMimeType: "application/json",
@@ -126,7 +131,7 @@ export const generateVideoPrompts = async (scenes: Scene[]): Promise<VideoPrompt
   const input = scenes.map(s => `Scene ${s.sceneNumber}: ${s.visualDirection}`).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Convert the following visual directions into English Video Prompts for AI generation. Style: ${VISUAL_CONSTANTS}.\n${input}`,
+    contents: `Convert visual directions into English Video Prompts. Style: Cinematic. \n${input}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -150,7 +155,7 @@ export const proofreadJapanese = async (scenes: Scene[]): Promise<string> => {
   const text = scenes.map(s => s.japaneseNarration).join("\n");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Proofread the following Japanese script to ensure it is natural and respectful for Japanese seniors:\n${text}`
+    contents: `Proofread this Japanese script for natural phrasing:\n${text}`
   });
   return response.text || "교열 완료";
 };
@@ -159,7 +164,7 @@ export const generateMarketing = async (topic: string, script: string): Promise<
   const ai = getAiClient();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Based on this topic "${topic}" and script summary, generate 3 viral Japanese titles, a main thumbnail copy, and relevant hashtags.`,
+    contents: `Generate viral Japanese titles, thumbnail copy, and hashtags for topic: "${topic}". Script summary: ${script.substring(0, 500)}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -179,7 +184,7 @@ export const generateMarketing = async (topic: string, script: string): Promise<
 export const generateThumbnails = async (topic: string, benchmarkUrl: string, marketing: MarketingData, protagonistDescription: string): Promise<ThumbnailResult> => {
   const ai = getAiClient();
   const characterStyle = protagonistDescription || VISUAL_CONSTANTS;
-  const basePrompt = `Professional YouTube thumbnail. Japanese text: "${marketing.thumbnailCopy}". Style: ${characterStyle}. Color Strategy: ${THUMBNAIL_COLOR_STRATEGY}. High contrast, 4K resolution.`;
+  const basePrompt = `Professional YouTube thumbnail. Japanese text: "${marketing.thumbnailCopy}". Style: ${characterStyle}. Color Strategy: High contrast. 4K resolution.`;
 
   try {
     const [longForm, shorts] = await Promise.all([
@@ -203,6 +208,7 @@ export const generateThumbnails = async (topic: string, benchmarkUrl: string, ma
 
     return { analysis: "디자인 분석 완료", longFormUrl: extract(longForm), shortsUrl: extract(shorts) };
   } catch (e) {
+    console.error("Thumbnail Generation Error:", e);
     return { analysis: "디자인 생성 오류", longFormUrl: "", shortsUrl: "" };
   }
 };
